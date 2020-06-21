@@ -1,19 +1,36 @@
 <template>
   <div id="app">
+    <Gradient ref="Gradient" />
     <main>
       <div class="search-box">
-        <input type="text" class="search-bar" placeholder="Search..." />
+        <input
+          type="text"
+          class="search-bar"
+          placeholder="Please enter your location..."
+          v-model="query"
+          @keypress="fetchWeather"
+          icon="search"
+        />
       </div>
 
-      <div class="weather-wrap">
+      <div class="weather-wrap" v-if="typeof weather.city_name != 'undefined'">
         <div class="location-box">
-          <div class="location">Amsterdam, NL</div>
-          <div class="date">Wednesday 17 June 2020</div>
+          <div class="location">
+            {{ weather.city_name }}, {{ weather.country_code }}
+          </div>
+          <div class="date">{{ dateBuilder() }}</div>
         </div>
 
         <div class="weather-box">
-          <div class="temperature">9°</div>
-          <div class="weather">Rain</div>
+          <div class="temperature">{{ weather.temp }} ℃</div>
+          <div class="weather">{{ weather.weather.description }}</div>
+        </div>
+        <div v-for="dailyForecast in forecast" :key="dailyForecast.valid_date">
+          <Forecast
+            v-bind:temp="dailyForecast.temp"
+            v-bind:date="new Date(dailyForecast.datetime)"
+          />
+          <!-- <p>{{ dailyForecast.temp }}, {{ dailyForecast.datetime }}</p> -->
         </div>
       </div>
     </main>
@@ -25,9 +42,92 @@ export default {
   name: "App",
   data() {
     return {
-      api_key: "a9749520d5ef477ebcc7e362708bc2b0"
+      api_key: "a9749520d5ef477ebcc7e362708bc2b0",
+      url_base: "http://api.weatherbit.io/v2.0",
+      query_units: `&units=metric`,
+      query_key_param: "&key=",
+      query: "",
+      weather: {},
+      forecast: [],
     };
-  }
+  },
+  methods: {
+    fetchWeather(e) {
+      if (e.key == "Enter") {
+        fetch(
+          `${this.url_base}/current/weather?city=${this.query +
+            this.query_units +
+            this.query_key_param +
+            this.api_key}`
+        )
+          .then((res) => {
+            return res.json();
+          })
+          .then(this.setResults);
+
+        this.fetchForecast();
+      }
+    },
+    fetchForecast() {
+      console.log(
+        `${this.url_base}/forecast/daily?city=${this.query +
+          this.query_units +
+          this.query_key_param +
+          this.api_key}`
+      );
+
+      fetch(
+        `${this.url_base}/forecast/daily?city=${this.query +
+          this.query_units +
+          this.query_key_param +
+          this.api_key}`
+      )
+        .then((res) => {
+          return res.json();
+        })
+        .then(this.setForecast);
+    },
+    dateBuilder() {
+      let d = new Date();
+      let months = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "Mei",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      let days = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+
+      let day = days[d.getDay()];
+      let date = d.getDate();
+      let month = months[d.getMonth()];
+      let year = d.getFullYear();
+
+      return `${day} ${date} ${month} ${year}`;
+    },
+    setResults(results) {
+      this.weather = results.data[0];
+      this.$refs.Gradient.update(this.weather.temp);
+    },
+    setForecast(forecast) {
+      this.forecast = forecast.data.slice(1, 8);
+    },
+  },
 };
 </script>
 
@@ -43,20 +143,40 @@ body {
 }
 
 #app {
-  background-image: url("./assets/cold.jpeg");
   background-size: cover;
   background-position: bottom;
   transition: 0.4s;
 }
 
+#gradient {
+  background: linear-gradient(
+    0deg,
+    #102f7e 0%,
+    #0c8dd6 12.5%,
+    #1aa0ec 25%,
+    #60c6ff 37.5%,
+    #9bdbff 50%,
+    #b4deda 62.5%,
+    #ffd66b 75%,
+    #ffc178 87.5%,
+    #fe9255 100%
+  );
+  position: fixed;
+  width: 100%;
+  height: 500%;
+  z-index: -100;
+  /* left: -1000px; */
+  /* top: -50% */
+}
+
 main {
   min-height: 100vh;
   padding: 25px;
-  background-image: linear-gradient(
+  /* background-image: linear-gradient(
     to bottom,
     rgba(0, 0, 0, 0.25),
     rgba(0, 0, 0, 0.75)
-  );
+  ); */
 }
 
 .search-box {
@@ -99,8 +219,8 @@ main {
 
 .location-box .date {
   color: #fff;
-  font-size: 20px;
-  font-weight: 300;
+  font-size: 12px;
+  font-weight: 600;
   font-style: italic;
   text-align: center;
 }
@@ -113,15 +233,18 @@ main {
   display: inline-block;
   padding: 10px 25px;
   color: #fff;
-  font-size: 102px;
-  font-weight: 900;
+  font-size: 120px;
+  font-weight: 600;
+  font-style: normal;
+  line-height: 120px;
+  font-family: poppins;
 
   text-shadow: 3px 6px rgba(0, 0, 0, 0.25);
   background-color: rgba(255, 255, 255, 0.25);
   border-radius: 16px;
   margin: 30px 0px;
 
-  box-shadow: 3px 6px rgba(0, 0, 0, 0.25);
+  box-shadow: 2px 4px rgba(0, 0, 0, 0.25);
 }
 
 .weather-box .weather {
